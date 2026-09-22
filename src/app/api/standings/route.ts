@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 
 type Standing = {
   player_id: string;
@@ -16,23 +16,23 @@ type Standing = {
 
 export async function GET() {
   try {
-    const supabaseUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabase = await createClient();
 
-    const supabaseKey =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    /*
+     * La classifica è disponibile
+     * solamente agli utenti autenticati.
+     */
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (authError || !user) {
       return NextResponse.json(
-        { error: "Missing environment variables" },
-        { status: 500 }
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
-
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseKey
-    );
 
     /*
      * 1. Recupera giocatori e giornate.
@@ -67,8 +67,11 @@ export async function GET() {
     const now = new Date();
 
     /*
-     * Non ci fidiamo esclusivamente della colonna
-     * locked: calcoliamo anche il lock temporale.
+     * Non ci fidiamo esclusivamente
+     * della colonna locked.
+     *
+     * Una giornata è chiusa anche
+     * quando è iniziata la prima partita.
      */
     const lockedRounds = (rounds ?? []).filter(
       (round) => {
@@ -92,15 +95,15 @@ export async function GET() {
     );
 
     /*
-     * Ultime 3 giornate chiuse:
-     * es. G5, G4, G3.
+     * Ultime 3 giornate chiuse.
      */
     const recentRounds = [
       ...lockedRounds,
     ]
       .sort(
         (a, b) =>
-          b.round_number - a.round_number
+          b.round_number -
+          a.round_number
       )
       .slice(0, 3)
       .map((round) => ({
@@ -123,10 +126,8 @@ export async function GET() {
       throw matchesError;
     }
 
-    const matchRoundById = new Map<
-      number,
-      number
-    >();
+    const matchRoundById =
+      new Map<number, number>();
 
     for (const match of matches ?? []) {
       matchRoundById.set(
@@ -136,7 +137,12 @@ export async function GET() {
     }
 
     /*
-     * 3. Recupera tutti i pronostici.
+     * 3. Recupera i pronostici.
+     *
+     * Grazie alla sessione autenticata
+     * e alle policy RLS, Supabase consente
+     * di leggere i pronostici delle
+     * giornate già chiuse.
      */
     const {
       data: predictions,
@@ -153,7 +159,7 @@ export async function GET() {
 
     /*
      * 4. Prepara una riga classifica
-     * per ogni player.
+     * per ogni giocatore.
      */
     const standingsByPlayer =
       new Map<string, Standing>();
@@ -167,11 +173,14 @@ export async function GET() {
           total_points: 0,
           exact_scores: 0,
           correct_outcomes: 0,
+
           recent_round_points:
             recentRounds.map((round) => ({
               round_id: round.id,
+
               round_number:
                 round.round_number,
+
               points: 0,
             })),
         }
@@ -181,8 +190,9 @@ export async function GET() {
     /*
      * 5. Aggrega i punti.
      *
-     * Consideriamo soltanto pronostici
-     * appartenenti a giornate già locked.
+     * Consideriamo esclusivamente
+     * pronostici appartenenti
+     * a giornate già chiuse.
      */
     for (const prediction of
       predictions ?? []) {
@@ -220,7 +230,7 @@ export async function GET() {
       }
 
       /*
-       * 1 punto = esito 1/X/2 corretto,
+       * 1 punto = esito corretto
        * ma risultato non esatto.
        */
       if (points === 1) {
@@ -241,9 +251,8 @@ export async function GET() {
     /*
      * 6. Ordina per punti totali.
      *
-     * Il nome serve solo a mantenere un ordine
-     * stabile quando due utenti hanno lo stesso
-     * punteggio.
+     * Il nome mantiene un ordine stabile
+     * in caso di parità.
      */
     const standings = Array.from(
       standingsByPlayer.values()
@@ -265,7 +274,7 @@ export async function GET() {
     });
 
     /*
-     * 7. Assegna le posizioni.
+     * 7. Posizioni.
      *
      * A parità di punti assegniamo
      * la stessa posizione.
