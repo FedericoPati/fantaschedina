@@ -67,7 +67,7 @@ export default async function LoginPage({
             <p className="mt-1 text-sm text-gray-500">
               {isSignup
                 ? "Entra nella Fantaschedina."
-                : "Accedi ai tuoi pronostici."}
+                : "Accedi con email o nome utente."}
             </p>
           </div>
 
@@ -98,14 +98,14 @@ export default async function LoginPage({
                     htmlFor="name"
                     className="mb-1.5 block text-sm font-medium text-gray-700"
                   >
-                    Nome
+                    Nome utente
                   </label>
 
                   <input
                     id="name"
                     name="name"
                     type="text"
-                    autoComplete="name"
+                    autoComplete="username"
                     required
                     placeholder="Federico"
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-gray-400 focus:bg-white"
@@ -115,19 +115,45 @@ export default async function LoginPage({
 
               <div>
                 <label
-                  htmlFor="email"
+                  htmlFor={
+                    isSignup
+                      ? "email"
+                      : "identifier"
+                  }
                   className="mb-1.5 block text-sm font-medium text-gray-700"
                 >
-                  Email
+                  {isSignup
+                    ? "Email"
+                    : "Email o nome utente"}
                 </label>
 
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id={
+                    isSignup
+                      ? "email"
+                      : "identifier"
+                  }
+                  name={
+                    isSignup
+                      ? "email"
+                      : "identifier"
+                  }
+                  type={
+                    isSignup
+                      ? "email"
+                      : "text"
+                  }
+                  autoComplete={
+                    isSignup
+                      ? "email"
+                      : "username"
+                  }
                   required
-                  placeholder="nome@email.it"
+                  placeholder={
+                    isSignup
+                      ? "nome@email.it"
+                      : "Federico o nome@email.it"
+                  }
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-gray-400 focus:bg-white"
                 />
               </div>
