@@ -60,7 +60,69 @@ export async function GET(request: Request) {
         },
       }
     );
+    
+    const { searchParams } = new URL(request.url);
 
+    const force =
+      searchParams.get("force") === "1";
+
+    /*
+    * Le chiamate normali a questo endpoint possono
+    * avvenire frequentemente.
+    *
+    * Football-data viene però interrogato solamente
+    * se siamo vicini a una partita o se una partita
+    * dovrebbe essere ancora in corso.
+    *
+    * force=1 bypassa questo controllo ed è usato
+    * per l'aggiornamento giornaliero del calendario.
+    */
+    if (!force) {
+      const now = new Date();
+
+      const windowStart = new Date(
+        now.getTime() -
+          5 * 60 * 60 * 1000
+      );
+
+      const windowEnd = new Date(
+        now.getTime() +
+          30 * 60 * 1000
+      );
+
+      const {
+        data: activeMatches,
+        error: activeMatchesError,
+      } = await supabase
+        .from("matches")
+        .select("id")
+        .gte(
+          "kickoff",
+          windowStart.toISOString()
+        )
+        .lte(
+          "kickoff",
+          windowEnd.toISOString()
+        )
+        .neq("status", "FINISHED")
+        .limit(1);
+
+      if (activeMatchesError) {
+        throw activeMatchesError;
+      }
+
+      if (
+        !activeMatches ||
+        activeMatches.length === 0
+      ) {
+        return NextResponse.json({
+          success: true,
+          skipped: true,
+          reason:
+            "No matches in the active sync window",
+        });
+      }
+    }
     // 1. Recupera Serie A da football-data.org
     const matches =
       await getSerieAMatches();

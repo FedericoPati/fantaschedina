@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/sync-matches?force=1",
+      "schedule": "15 4 * * *"
+    }
+  ]
+}
