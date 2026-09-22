@@ -107,7 +107,7 @@ export default async function LoginPage({
                     type="text"
                     autoComplete="username"
                     required
-                    placeholder="Federico"
+                    placeholder="Username"
                     className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-gray-400 focus:bg-white"
                   />
                 </div>
@@ -152,7 +152,7 @@ export default async function LoginPage({
                   placeholder={
                     isSignup
                       ? "nome@email.it"
-                      : "Federico o nome@email.it"
+                      : "Username o email"
                   }
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-gray-400 focus:bg-white"
                 />

@@ -30,8 +30,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const roundId =
-      Number(roundIdParam);
+    const roundId = Number(roundIdParam);
 
     if (!Number.isInteger(roundId)) {
       return NextResponse.json(
@@ -91,7 +90,7 @@ export async function GET(request: Request) {
 
     /*
      * Prima del lock:
-     * solo il giocatore loggato.
+     * ciascun giocatore vede solo se stesso.
      */
     if (!isLocked) {
       return NextResponse.json({
@@ -101,79 +100,34 @@ export async function GET(request: Request) {
       });
     }
 
-    const {
-      data: matches,
-      error: matchesError,
-    } = await supabase
-      .from("matches")
-      .select("id")
-      .eq("round_id", roundId);
-
-    if (matchesError) {
-      throw matchesError;
-    }
-
-    const matchIds = (
-      matches ?? []
-    ).map((match) => match.id);
-
-    if (matchIds.length === 0) {
-      return NextResponse.json({
-        success: true,
-        locked: true,
-        players: [currentPlayer],
-      });
-    }
-
-    const {
-      data: predictions,
-      error: predictionsError,
-    } = await supabase
-      .from("predictions")
-      .select("player_id")
-      .in("match_id", matchIds);
-
-    if (predictionsError) {
-      throw predictionsError;
-    }
-
     /*
-     * Includiamo sempre anche l'utente
-     * corrente, anche se quella giornata
-     * non aveva giocato.
+     * Dopo il lock:
+     * tutti i giocatori registrati,
+     * anche chi non ha fatto pronostici.
      */
-    const playerIds = [
-      ...new Set([
-        user.id,
-        ...(predictions ?? []).map(
-          (prediction) =>
-            prediction.player_id
-        ),
-      ]),
-    ];
-
     const {
       data: players,
       error: playersError,
     } = await supabase
       .from("players")
       .select("id, name")
-      .in("id", playerIds);
+      .order("name", {
+        ascending: true,
+      });
 
     if (playersError) {
       throw playersError;
     }
 
+    /*
+     * Mettiamo sempre l'utente corrente
+     * come primo della lista.
+     */
     const orderedPlayers = [
       ...(players ?? []),
     ].sort((a, b) => {
-      if (a.id === user.id) {
-        return -1;
-      }
-
-      if (b.id === user.id) {
-        return 1;
-      }
+      if (a.id === user.id) return -1;
+      if (b.id === user.id) return 1;
 
       return a.name.localeCompare(
         b.name,
