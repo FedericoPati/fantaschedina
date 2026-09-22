@@ -1,0 +1,24 @@
+name: Sync Serie A
+
+on:
+  schedule:
+    - cron: "2/5 * * * *"
+
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Sync matches and scores
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://fantaschedina-three.vercel.app/api/sync-matches
