@@ -9,11 +9,11 @@ export async function GET(request: Request) {
       request.headers.get("authorization");
 
     const syncSecret =
-      process.env.SYNC_SECRET;
+      process.env.CRON_SECRET;
 
     if (!syncSecret) {
       return NextResponse.json(
-        { error: "SYNC_SECRET not configured" },
+        { error: "CRON_SECRET not configured" },
         { status: 500 }
       );
     }
