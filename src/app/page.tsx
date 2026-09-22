@@ -618,6 +618,23 @@ export default function Home() {
   const isOwnPredictions =
     selectedPlayerId === currentPlayer?.id;
 
+  const hasSavedPredictions =
+    Object.keys(savedPredictions).length > 0;
+
+  const selectedPlayer =
+    players.find(
+      (player) =>
+        player.id === selectedPlayerId
+    );
+
+  const showNoPredictionsMessage =
+    Boolean(
+      data?.round?.locked &&
+        selectedPlayerId &&
+        !hasSavedPredictions
+    );
+
+
   const canEdit =
     Boolean(data?.round) &&
     !data?.round?.locked &&
@@ -930,47 +947,63 @@ export default function Home() {
               </div>
 
               {/* GIOCATORE */}
-              {data?.round?.locked &&
-                players.length > 0 && (
-                  <div className="mt-4 border-t border-gray-100 pt-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-sm text-gray-500">
-                        Pronostici di
-                      </span>
+        {data?.round?.locked &&
+          players.length > 0 && (
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm text-gray-500">
+                  Pronostici di
+                </span>
 
-                      <select
-                        value={selectedPlayerId}
-                        onChange={(event) => {
-                          setSelectedPlayerId(
-                            event.target.value
-                          );
+                <select
+                  value={selectedPlayerId}
+                  onChange={(event) => {
+                    setSelectedPlayerId(
+                      event.target.value
+                    );
 
-                          setMessage(null);
-                        }}
-                        className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white"
-                      >
-                        {players.map(
-                          (player) => (
-                            <option
-                              key={player.id}
-                              value={player.id}
-                            >
-                              {player.id ===
-                              currentPlayer?.id
-                                ? `${player.name} · Tu`
-                                : player.name}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                )}
-            </section>
+                    setMessage(null);
+                  }}
+                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white"
+                >
+                  {players.map((player) => (
+                    <option
+                      key={player.id}
+                      value={player.id}
+                    >
+                      {player.id ===
+                      currentPlayer?.id
+                        ? `${player.name} · Tu`
+                        : player.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </section>
 
-            {roundLoading || !data?.round ? (
-              <div className="rounded-2xl bg-white p-6 text-sm text-gray-500 shadow-sm">
-                Caricamento giornata...
+        {roundLoading || !data?.round ? (
+          <div className="rounded-2xl bg-white p-6 text-sm text-gray-500 shadow-sm">
+            Caricamento giornata...
+          </div>
+        ) : (
+          <>
+            {showNoPredictionsMessage ? (
+              <div className="rounded-2xl border border-gray-200 bg-white px-5 py-8 text-center shadow-sm">
+                <p className="text-sm font-semibold text-gray-900">
+                  Nessun pronostico inserito
+                </p>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  {selectedPlayer?.id ===
+                  currentPlayer?.id
+                    ? "Non avevi inserito pronostici per questa giornata."
+                    : `${
+                        selectedPlayer?.name ??
+                        "Questo giocatore"
+                      } non aveva inserito pronostici per questa giornata.`}
+                </p>
               </div>
             ) : (
               <>
@@ -988,15 +1021,12 @@ export default function Home() {
                       };
 
                     const savedPrediction =
-                      savedPredictions[
-                        match.id
-                      ];
+                      savedPredictions[match.id];
 
                     const hasPrediction =
                       prediction.home_score !==
                         "" &&
-                      prediction.away_score !==
-                        "";
+                      prediction.away_score !== "";
 
                     const isFinished =
                       match.status ===
@@ -1256,7 +1286,8 @@ export default function Home() {
             )}
           </>
         )}
-
+          </>
+        )}
         {/* ===================================== */}
         {/* CLASSIFICA */}
         {/* ===================================== */}
