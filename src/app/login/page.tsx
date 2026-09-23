@@ -181,6 +181,16 @@ export default async function LoginPage({
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-950 outline-none transition placeholder:text-gray-300 focus:border-gray-400 focus:bg-white"
                 />
               </div>
+              {!isSignup && (
+                <div className="text-right">
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm font-medium text-gray-500 transition hover:text-gray-950"
+                  >
+                    Password dimenticata?
+                  </Link>
+                </div>
+              )}
             </div>
 
             <button
