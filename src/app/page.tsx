@@ -149,13 +149,23 @@ export default function Home() {
   useEffect(() => {
     async function initialize() {
       try {
-        const [meResponse, roundsResponse] =
-          await Promise.all([
-            fetch("/api/me", {
-              cache: "no-store",
-            }),
-            fetch("/api/rounds"),
-          ]);
+        const [
+          meResponse,
+          roundsResponse,
+          currentRoundResponse,
+        ] = await Promise.all([
+          fetch("/api/me", {
+            cache: "no-store",
+          }),
+
+          fetch("/api/rounds", {
+            cache: "no-store",
+          }),
+
+          fetch("/api/rounds/current", {
+            cache: "no-store",
+          }),
+        ]);
 
         /*
         * Se non c'è una sessione valida,
@@ -184,6 +194,12 @@ export default function Home() {
         const roundsResult: RoundsResponse =
           await roundsResponse.json();
 
+        const currentRoundResult:
+          RoundDetailResponse | null =
+          currentRoundResponse.ok
+            ? await currentRoundResponse.json()
+            : null;
+
         setCurrentPlayer(meResult.player);
         setSelectedPlayerId(meResult.player.id);
 
@@ -192,27 +208,14 @@ export default function Home() {
 
         setRounds(loadedRounds);
 
-        const nextOpenRound = [...loadedRounds]
-          .filter((round) => !round.locked)
-          .sort(
-            (a, b) =>
-              a.round_number - b.round_number
-          )[0];
-
-        const latestLockedRound = [
-          ...loadedRounds,
-        ]
-          .filter((round) => round.locked)
-          .sort(
-            (a, b) =>
-              b.round_number - a.round_number
-          )[0];
-
         const defaultRound =
-          nextOpenRound ?? latestLockedRound;
+          currentRoundResult?.round ??
+          null;
 
         if (defaultRound) {
-          setSelectedRoundId(defaultRound.id);
+          setSelectedRoundId(
+            defaultRound.id
+          );
         }
       } catch (error) {
         setMessage(

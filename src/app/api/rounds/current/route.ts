@@ -1,97 +1,227 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
+
+const LIVE_STATUSES = new Set([
+  "IN_PLAY",
+  "PAUSED",
+]);
+
+const DEFERRED_STATUSES = new Set([
+  "POSTPONED",
+  "SUSPENDED",
+  "CANCELLED",
+  "CANCELED",
+]);
 
 export async function GET() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const supabase = await createClient();
 
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json(
-        { error: "Missing environment variables" },
-        { status: 500 }
-      );
-    }
-
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseKey
-    );
-
-    /*
-     * Recuperiamo le giornate in ordine.
-     *
-     * Non filtriamo più con:
-     *
-     *   .eq("locked", false)
-     *
-     * perché lo stato reale di lock viene determinato
-     * confrontando l'orario attuale con first_match_start.
-     */
-    const { data: rounds, error: roundsError } =
-      await supabase
+    const [
+      { data: rounds, error: roundsError },
+      { data: matches, error: matchesError },
+    ] = await Promise.all([
+      supabase
         .from("rounds")
-        .select("*")
-        .order("round_number", { ascending: true });
+        .select(
+          "id, round_number, first_match_start, locked"
+        )
+        .order("round_number", {
+          ascending: true,
+        }),
+
+      supabase
+        .from("matches")
+        .select(
+          "id, round_id, home_team, away_team, kickoff, home_score, away_score, status, external_id"
+        )
+        .order("kickoff", {
+          ascending: true,
+        }),
+    ]);
 
     if (roundsError) {
       throw roundsError;
     }
 
-    if (!rounds || rounds.length === 0) {
-      return NextResponse.json({
-        round: null,
-        matches: [],
-      });
+    if (matchesError) {
+      throw matchesError;
     }
 
     const now = new Date();
 
     /*
-     * Per ora manteniamo la giornata più recente disponibile.
-     *
-     * Se esiste una giornata futura/non iniziata,
-     * prendiamo la prima.
-     *
-     * Altrimenti prendiamo l'ultima giornata esistente.
-     *
-     * Questo ci permette di continuare a visualizzare una
-     * giornata anche dopo che è iniziata, cosa fondamentale
-     * per mostrare risultati e punti.
+     * Calcoliamo il lock reale.
      */
-    const upcomingRound = rounds.find((round) => {
-      if (!round.first_match_start) {
-        return false;
+    const normalizedRounds = (
+      rounds ?? []
+    ).map((round) => ({
+      ...round,
+
+      locked:
+        round.locked ||
+        Boolean(
+          round.first_match_start &&
+            now >=
+              new Date(
+                round.first_match_start
+              )
+        ),
+    }));
+
+    /*
+     * Raggruppiamo le partite
+     * per giornata.
+     */
+    const matchesByRound =
+      new Map<
+        number,
+        NonNullable<typeof matches>
+      >();
+
+    for (const match of matches ?? []) {
+      const current =
+        matchesByRound.get(
+          match.round_id
+        ) ?? [];
+
+      current.push(match);
+
+      matchesByRound.set(
+        match.round_id,
+        current
+      );
+    }
+
+    /*
+     * CASO 1:
+     * esiste una partita realmente live.
+     *
+     * Questo vale anche per un recupero
+     * di una vecchia giornata.
+     */
+    const liveRounds = normalizedRounds
+      .filter((round) => {
+        const roundMatches =
+          matchesByRound.get(round.id) ??
+          [];
+
+        return roundMatches.some(
+          (match) =>
+            LIVE_STATUSES.has(
+              match.status
+            )
+        );
+      })
+      .sort(
+        (a, b) =>
+          b.round_number -
+          a.round_number
+      );
+
+    let selectedRound =
+      liveRounds[0] ?? null;
+
+    /*
+     * CASO 2:
+     * nessuna partita live.
+     *
+     * Controlliamo l'ultima giornata
+     * già iniziata.
+     */
+    if (!selectedRound) {
+      const latestLockedRound = [
+        ...normalizedRounds,
+      ]
+        .filter(
+          (round) => round.locked
+        )
+        .sort(
+          (a, b) =>
+            b.round_number -
+            a.round_number
+        )[0];
+
+      if (latestLockedRound) {
+        const roundMatches =
+          matchesByRound.get(
+            latestLockedRound.id
+          ) ?? [];
+
+        /*
+         * Una partita normale ancora
+         * da giocare mantiene attiva
+         * la giornata.
+         *
+         * POSTPONED / SUSPENDED /
+         * CANCELLED invece no.
+         */
+        const hasRegularPendingMatch =
+          roundMatches.some(
+            (match) =>
+              match.status !==
+                "FINISHED" &&
+              !DEFERRED_STATUSES.has(
+                match.status
+              )
+          );
+
+        if (hasRegularPendingMatch) {
+          selectedRound =
+            latestLockedRound;
+        }
       }
+    }
 
-      return new Date(round.first_match_start) > now;
-    });
+    /*
+     * CASO 3:
+     * la giornata precedente è
+     * realmente conclusa.
+     *
+     * Passiamo alla prossima aperta.
+     */
+    if (!selectedRound) {
+      selectedRound = [
+        ...normalizedRounds,
+      ]
+        .filter(
+          (round) => !round.locked
+        )
+        .sort(
+          (a, b) =>
+            a.round_number -
+            b.round_number
+        )[0] ?? null;
+    }
 
-    const round =
-      upcomingRound ?? rounds[rounds.length - 1];
-
-    const locked =
-      Boolean(round.first_match_start) &&
-      now >= new Date(round.first_match_start);
-
-    const { data: matches, error: matchesError } =
-      await supabase
-        .from("matches")
-        .select("*")
-        .eq("round_id", round.id)
-        .order("kickoff", { ascending: true });
-
-    if (matchesError) {
-      throw matchesError;
+    /*
+     * Fallback:
+     * campionato terminato.
+     */
+    if (!selectedRound) {
+      selectedRound = [
+        ...normalizedRounds,
+      ]
+        .filter(
+          (round) => round.locked
+        )
+        .sort(
+          (a, b) =>
+            b.round_number -
+            a.round_number
+        )[0] ?? null;
     }
 
     return NextResponse.json({
-      round: {
-        ...round,
-        locked,
-      },
-      matches: matches ?? [],
+      success: true,
+
+      round: selectedRound,
+
+      matches: selectedRound
+        ? matchesByRound.get(
+            selectedRound.id
+          ) ?? []
+        : [],
     });
   } catch (error) {
     console.error(error);
