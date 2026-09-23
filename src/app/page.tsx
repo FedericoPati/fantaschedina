@@ -1323,108 +1323,120 @@ export default function Home() {
               </div>
             ) : (
               <>
+
                 {/* MOBILE */}
-                <div className="space-y-3 md:hidden">
-                  {standings.standings.map(
-                    (standing) => {
-                      const isMe =
-                        standing.player_id ===
-                        currentPlayer?.id;
+                <div className="md:hidden">
+                  <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white shadow-sm">
+                    <table className="min-w-[620px] w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50/80 text-xs font-semibold text-gray-400">
+                          <th className="w-12 px-3 py-3 text-center">
+                            #
+                          </th>
 
-                      return (
-                        <article
-                          key={
-                            standing.player_id
-                          }
-                          className={`rounded-2xl border p-5 shadow-sm ${
-                            isMe
-                              ? "border-gray-300 bg-white"
-                              : "border-black/5 bg-white"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-700">
-                                {
-                                  standing.position
-                                }
-                              </div>
+                          <th className="min-w-[150px] px-3 py-3 text-left">
+                            Giocatore
+                          </th>
 
-                              <div>
-                                <p className="font-semibold text-gray-950">
-                                  {
-                                    standing.name
-                                  }
+                          <th className="px-3 py-3 text-center text-gray-700">
+                            Pt
+                          </th>
 
-                                  {isMe && (
-                                    <span className="ml-2 text-xs font-medium text-gray-400">
-                                      Tu
-                                    </span>
-                                  )}
-                                </p>
+                          <th className="px-3 py-3 text-center">
+                            Esatti
+                          </th>
 
-                                <p className="mt-0.5 text-xs text-gray-400">
-                                  {
-                                    standing.exact_scores
-                                  }{" "}
-                                  esatti ·{" "}
-                                  {
-                                    standing.correct_outcomes
-                                  }{" "}
-                                  esiti
-                                </p>
-                              </div>
-                            </div>
+                          <th className="px-3 py-3 text-center">
+                            1X2
+                          </th>
 
-                            <div className="text-right">
-                              <p className="text-2xl font-bold tracking-tight text-gray-950">
-                                {
-                                  standing.total_points
-                                }
-                              </p>
-
-                              <p className="text-xs text-gray-400">
-                                punti
-                              </p>
-                            </div>
-                          </div>
-
-                          {standing
-                            .recent_round_points
-                            .length > 0 && (
-                            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-4">
-                              {standing.recent_round_points.map(
-                                (
-                                  recent
-                                ) => (
-                                  <div
-                                    key={
-                                      recent.round_id
-                                    }
-                                    className="rounded-xl bg-gray-50 p-3 text-center"
-                                  >
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                                      G
-                                      {
-                                        recent.round_number
-                                      }
-                                    </p>
-
-                                    <p className="mt-1 font-bold text-gray-900">
-                                      {
-                                        recent.points
-                                      }
-                                    </p>
-                                  </div>
-                                )
-                              )}
-                            </div>
+                          {standings.recent_rounds.map(
+                            (round) => (
+                              <th
+                                key={round.id}
+                                className="px-3 py-3 text-center"
+                              >
+                                G{round.round_number}
+                              </th>
+                            )
                           )}
-                        </article>
-                      );
-                    }
-                  )}
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {standings.standings.map(
+                          (standing) => {
+                            const isMe =
+                              standing.player_id ===
+                              currentPlayer?.id;
+
+                            return (
+                              <tr
+                                key={standing.player_id}
+                                className={`border-b border-gray-100 last:border-b-0 ${
+                                  isMe
+                                    ? "bg-gray-50/80"
+                                    : "bg-white"
+                                }`}
+                              >
+                                <td className="px-3 py-4 text-center">
+                                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">
+                                    {standing.position}
+                                  </span>
+                                </td>
+
+                                <td className="px-3 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="whitespace-nowrap text-sm font-semibold text-gray-950">
+                                      {standing.name}
+                                    </span>
+
+                                    {isMe && (
+                                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+                                        Tu
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="px-3 py-4 text-center">
+                                  <span className="text-base font-bold text-gray-950">
+                                    {standing.total_points}
+                                  </span>
+                                </td>
+
+                                <td className="px-3 py-4 text-center text-sm font-medium text-gray-600">
+                                  {standing.exact_scores}
+                                </td>
+
+                                <td className="px-3 py-4 text-center text-sm font-medium text-gray-600">
+                                  {standing.correct_outcomes}
+                                </td>
+
+                                {standing.recent_round_points.map(
+                                  (recent) => (
+                                    <td
+                                      key={recent.round_id}
+                                      className="px-3 py-4 text-center text-sm font-medium text-gray-700"
+                                    >
+                                      {recent.points}
+                                    </td>
+                                  )
+                                )}
+                              </tr>
+                            );
+                          }
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="mt-3 px-1 text-xs text-gray-400">
+                    Scorri lateralmente per vedere tutte le statistiche.
+                  </p>
                 </div>
+
+                
 
                 {/* DESKTOP */}
                 <div className="hidden overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm md:block">
@@ -1449,7 +1461,7 @@ export default function Home() {
                           </th>
 
                           <th className="px-4 py-4 text-center">
-                            Esiti
+                            1X2
                           </th>
 
                           {standings.recent_rounds.map(
@@ -1551,9 +1563,8 @@ export default function Home() {
 
                 <p className="mt-4 text-center text-xs text-gray-400">
                   Esatti = risultato esatto ·
-                  Esiti = segno 1/X/2 corretto non
-                  esatto
-                </p>
+                  1X2 =  segno 1/X/2 corretto 
+                               </p>
               </>
             )}
           </>
